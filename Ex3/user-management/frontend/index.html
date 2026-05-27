@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Quản lý Người dùng</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+        /* CSS cơ bản và Responsive [cite: 180, 319] */
+        body {
+            font-family: sans-serif;
+            padding: 20px;
+            background: #f4f4f4;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        th,
+        td {
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #4CAF50;
+            color: white;
+        }
+
+        .error {
+            color: red;
+            font-size: 12px;
+        }
+
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 20px;
+            border-radius: 5px;
+            width: 400px;
+        }
+
+        @media (max-width: 768px) {
+            table {
+                display: block;
+                overflow-x: auto;
+            }
+        }
+
+    </style>
+</head>
+
+<body>
+    <div id="root"></div>
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        function App() {
+            const [users, setUsers] = useState([]);
+            const [page, setPage] = useState(1);
+            const [limit, setLimit] = useState(5);
+            const [search, setSearch] = useState("");
+            const [totalPages, setTotalPages] = useState(0);
+            const [showModal, setShowModal] = useState(false);
+            const [editingUser, setEditingUser] = useState(null);
+
+            const fetchUsers = () => {
+                fetch(`http://localhost:3001/api/users?page=${page}&limit=${limit}&search=${search}`)
+                    .then(res => {
+                        if (!res.ok) throw new Error("Không kết nối được Cơ sở dữ liệu");
+                        return res.json();
+                    })
+                    .then(data => {
+                        setUsers(data.data);
+                        setTotalPages(data.totalPages);
+                    })
+                    .catch(err => alert(err.message)); // Hiển thị lỗi kết nối khi Backend/DB tắt [Yêu cầu trong ảnh]
+            };
+
+            useEffect(() => { fetchUsers(); }, [page, limit, search]);
+
+            const handleDelete = (id) => {
+                if (confirm("Xóa người dùng này?")) {
+                    fetch(`http://localhost:3001/api/users/${id}`, { method: 'DELETE' })
+                        .then(() => fetchUsers())
+                        .catch(err => alert("Lỗi kết nối: " + err.message));
+                }
+            };
+
+            return (
+                <div className="container">
+                    <h2>Quản lý người dùng</h2>
+                    <input type="text" placeholder="Tìm kiếm..." onChange={(e) => { setSearch(e.target.value); setPage(1); }} />
+                    <button onClick={() => { setEditingUser(null); setShowModal(true); }}>Thêm mới</button>
+
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>STT</th><th>Họ tên</th><th>Tuổi</th><th>Email</th><th>Thao tác</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {users.map((u, i) => (
+                                <tr key={u._id}>
+                                    {/* STT tính theo trang: (page-1)*limit + index + 1  */}
+                                    <td>{(page - 1) * limit + i + 1}</td>
+                                    <td>{u.name}</td><td>{u.age}</td><td>{u.email}</td>
+                                    <td>
+                                        <button onClick={() => { setEditingUser(u); setShowModal(true); }}>Sửa</button>
+                                        <button onClick={() => handleDelete(u._id)}>Xóa</button>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+
+                    <div>
+                        <button disabled={page === 1} onClick={() => setPage(page - 1)}>Prev</button>
+                        <span> Trang {page}/{totalPages} </span>
+                        <button disabled={page >= totalPages} onClick={() => setPage(page + 1)}>Next</button>
+                        <select value={limit} onChange={(e) => { setLimit(Number(e.target.value)); setPage(1); }}>
+                            <option value="3">3</option><option value="5">5</option><option value="10">10</option>
+                        </select>
+                    </div>
+
+                    {showModal && <Modal user={editingUser} onClose={() => setShowModal(false)} onSave={fetchUsers} />}
+                </div>
+            );
+        }
+
+        function Modal({ user, onClose, onSave }) {
+            const [form, setForm] = useState(user || { name: "", age: "", email: "", address: "" });
+
+            const handleSubmit = () => {
+                const method = user ? 'PUT' : 'POST';
+                const url = user ? `http://localhost:3001/api/users/${user._id}` : `http://localhost:3001/api/users`;
+
+                fetch(url, {
+                    method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(form)
+                })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.error) alert(data.error); // Báo lỗi email tồn tại [Yêu cầu trong ảnh]
+                        else { onSave(); onClose(); }
+                    })
+                    .catch(err => alert("Không kết nối được Cơ sở dữ liệu"));
+            };
+
+            return (
+                <div className="modal">
+                    <div className="modal-content">
+                        <h3>{user ? "Sửa" : "Thêm"} người dùng</h3>
+                        <input placeholder="Tên" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} /><br />
+                        <input placeholder="Tuổi" type="number" value={form.age} onChange={e => setForm({ ...form, age: e.target.value })} /><br />
+                        <input placeholder="Email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} /><br />
+                        <button onClick={handleSubmit}>Lưu</button>
+                        <button onClick={onClose}>Hủy</button>
+                    </div>
+                </div>
+            );
+        }
+
+        ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+    </script>
+</body>
+
+</html>
