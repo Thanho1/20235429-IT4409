@@ -90,7 +90,7 @@
             const [editingUser, setEditingUser] = useState(null);
 
             const fetchUsers = () => {
-                fetch(`http://localhost:3001/api/users?page=${page}&limit=${limit}&search=${search}`)
+                fetch(`https://two0235429-backend.onrender.com/api/users?page=${page}&limit=${limit}&search=${search}`)
                     .then(res => {
                         if (!res.ok) throw new Error("Không kết nối được Cơ sở dữ liệu");
                         return res.json();
@@ -106,7 +106,7 @@
 
             const handleDelete = (id) => {
                 if (confirm("Xóa người dùng này?")) {
-                    fetch(`http://localhost:3001/api/users/${id}`, { method: 'DELETE' })
+                    fetch(`https://two0235429-backend.onrender.com/api/users/${id}`, { method: 'DELETE' })
                         .then(() => fetchUsers())
                         .catch(err => alert("Lỗi kết nối: " + err.message));
                 }
@@ -158,7 +158,7 @@
 
             const handleSubmit = () => {
                 const method = user ? 'PUT' : 'POST';
-                const url = user ? `http://localhost:3001/api/users/${user._id}` : `http://localhost:3001/api/users`;
+                const url = user ? `https://two0235429-backend.onrender.com/api/users/${user._id}` : `https://two0235429-backend.onrender.com/api/users`;
 
                 fetch(url, {
                     method,
